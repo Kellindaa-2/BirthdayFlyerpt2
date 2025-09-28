@@ -200,7 +200,7 @@
     </style>
 </head>
 <body>
-    <!-- add webkit-playsinline + mobile source fallback -->
+    <!-- Video is muted by default -->
     <video id="bgVideo" muted loop playsinline webkit-playsinline poster="images/poster.jpg" preload="metadata">
         <source src="video/videoplayback-mobile.mp4" type="video/mp4"> <!-- add this optimized file (optional) -->
         <source src="video/videoplayback.mp4" type="video/mp4">
@@ -267,7 +267,8 @@
             const plays = [];
             try {
                 if (video && typeof video.play === 'function') {
-                    video.muted = true; // most browsers allow muted autoplay
+                    // Video remains muted by default
+                    video.muted = true;
                     plays.push(video.play());
                 }
             } catch (e) {}
@@ -366,20 +367,14 @@
 
         // Play when user clicks overlay or anywhere (first interaction)
         function userStart(event) {
-            // explicit user gesture — start/unmute media
-            if (video) {
-                try {
-                    // unmute only on user interaction
-                    video.muted = false;
-                    video.play().catch(()=>{ /* ignore play errors */ });
-                } catch (e) {}
-            }
+            // explicit user gesture — start audio
             if (audio) {
                 try {
                     audio.play().catch(()=>{ /* ignore play errors */ });
                 } catch (e) {}
             }
 
+            // Video remains muted - no unmuting on user interaction
             if (video && video.style.display === 'none') video.style.display = '';
             if (playOverlay) {
                 playOverlay.style.display = 'none';
