@@ -12,13 +12,12 @@
             box-sizing: border-box;
         }
 
-        /* ensure mobile address-bar aware height and allow scrolling */
         html { height: 100%; }
         body {
             margin: 0;
             padding: 0;
-            min-height: 100svh; /* prefers dynamic viewport */
-            min-height: 100vh;  /* fallback */
+            min-height: 100svh;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -26,7 +25,7 @@
             font-family: 'Poppins', sans-serif;
             color: white;
             background: #000;
-            overflow: auto; /* allow page to scroll on small screens */
+            overflow: auto;
             position: relative;
         }
 
@@ -38,19 +37,15 @@
             height: 100%;
             object-fit: cover;
             z-index: -2;
-            pointer-events: none; /* don't capture taps on mobile */
+            pointer-events: none;
         }
 
-        /* Respect reduced motion preference */
         @media (prefers-reduced-motion: reduce) {
             .sparkle, h1 { animation: none !important; }
         }
 
-        /* Reduce / hide heavy effects on phones and coarse pointers */
         @media (max-width: 720px), (pointer: coarse) {
-            /* prefer runtime decision — don't force-hide video here */
-            /* #bgVideo { display: none; } */
-            .sparkle { display: none; }         /* skip sparkles */
+            .sparkle { display: none; }
             .content { padding: 16px; border-radius: 12px; width: min(95%, 700px); }
             h1 { font-size: clamp(1.4rem, 7vw, 1.8rem); }
             .ticket-btn { padding: 12px 20px; font-size: 1rem; }
@@ -200,9 +195,8 @@
     </style>
 </head>
 <body>
-    <!-- Video is muted by default -->
     <video id="bgVideo" muted loop playsinline webkit-playsinline poster="images/poster.jpg" preload="metadata">
-        <source src="video/videoplayback-mobile.mp4" type="video/mp4"> <!-- add this optimized file (optional) -->
+        <source src="video/videoplayback-mobile.mp4" type="video/mp4">
         <source src="video/videoplayback.mp4" type="video/mp4">
     </video>
    
@@ -224,9 +218,10 @@
         </a>
     </div>
 
-    <!-- remove autoplay from markup; preload kept minimal -->
-    <audio id="bgMusic" loop preload="none">
+    <!-- Just MP3 - works on 99% of devices -->
+    <audio id="bgMusic" preload="metadata" loop>
         <source src="audio/Huntrix - How It's Done (Lyrics) _ K-Pop Demon Hunters.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
     </audio>
 
     <div id="playOverlay" aria-hidden="true" style="display:none;">
@@ -234,78 +229,74 @@
     </div>
 
     <script>
-        // Simple and clean - enhanced autoplay handling
         const video = document.getElementById('bgVideo');
         const audio = document.getElementById('bgMusic');
         const playOverlay = document.getElementById('playOverlay');
         const playButton = document.getElementById('playButton');
 
-        // Detect touch / coarse pointer to avoid heavy autoplay/effects on phones
-        const isTouchDevice = matchMedia('(pointer:coarse)').matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-        // detect connection/save-data to avoid forcing large downloads on mobile
-        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
-        const saveData = connection.saveData === true || /2g|slow-2g/i.test(connection.effectiveType || '');
-
-        // Only hide video automatically on touch devices when save-data/very slow connection is detected
-        if (isTouchDevice && saveData) {
-            if (video) video.style.display = 'none';
-            if (audio) {
-                audio.preload = 'none';
-                audio.autoplay = false;
-            }
-            if (playOverlay) {
-                playOverlay.style.display = 'flex';
-                playOverlay.setAttribute('aria-hidden', 'false');
-            }
-        } else {
-            if (audio) audio.volume = 0.7;
-        }
-
-        // Helper: try to play both video and audio, return promise
-        function tryAutoplay() {
-            const plays = [];
-            try {
-                if (video && typeof video.play === 'function') {
-                    // Video remains muted by default
-                    video.muted = true;
-                    plays.push(video.play());
+        // Show play overlay on all devices (required for audio autoplay)
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                // Try to play video (muted, so usually works)
+                if (video) {
+                    video.play().catch(e => console.log("Video play failed:", e));
                 }
-            } catch (e) {}
-            try {
-                if (audio && typeof audio.play === 'function') plays.push(audio.play());
-            } catch (e) {}
+                
+                // Show audio play overlay
+                if (playOverlay) {
+                    playOverlay.style.display = 'flex';
+                }
+            }, 150);
+        });
 
-            return Promise.all(plays.map(p => (p && typeof p.then === 'function') ? p : Promise.resolve()))
-                .then(() => ({success: true}))
-                .catch(() => ({success: false}));
+        // Play audio when user clicks
+        function playAudio() {
+            if (!audio) return;
+            
+            // Set audio to desired start point
+            audio.currentTime = 78;
+            
+            audio.play().then(() => {
+                console.log("Audio playing");
+                if (playOverlay) {
+                    playOverlay.style.display = 'none';
+                }
+            }).catch(error => {
+                console.log("Audio play failed:", error);
+            });
         }
 
-        // Guarded media handlers
+        // Event listeners
+        if (playButton) playButton.addEventListener('click', playAudio);
+        
+        // Also play audio on any click to the page
+        document.addEventListener('click', function() {
+            playAudio();
+        }, { once: true });
+
+        // Video loop handling
         if (video) {
             video.addEventListener('timeupdate', function() {
                 if (this.currentTime >= 26) this.currentTime = 0;
             });
         }
+        
+        // Audio loop handling
         if (audio) {
             audio.addEventListener('timeupdate', function() {
                 if (this.currentTime >= 103) this.currentTime = 78;
             });
-            audio.addEventListener('loadeddata', function() {
-                try { this.currentTime = 78; } catch (e) {}
-            });
         }
 
-        // Sparkles function — skip entirely on touch devices to save CPU/battery
+        // Sparkles (skip on mobile)
+        const isTouchDevice = matchMedia('(pointer:coarse)').matches;
         function createSparkles() {
             if (isTouchDevice) return;
-            const sparkleCount = 40;
-            const colors = ['#ff6ec4', '#7873f5', '#ffffff', '#ffd700', '#ffa500'];
-
-            for (let i = 0; i < sparkleCount; i++) {
+            
+            for (let i = 0; i < 40; i++) {
                 const sparkle = document.createElement('div');
                 sparkle.className = 'sparkle';
-
+                
                 const angle = Math.random() * Math.PI * 2;
                 const distance = 40 + Math.random() * 160;
                 const tx = Math.cos(angle) * distance;
@@ -314,9 +305,7 @@
                 sparkle.style.cssText = `
                     left: 50%;
                     top: 50%;
-                    width: 8px;
-                    height: 8px;
-                    background: ${colors[Math.floor(Math.random() * colors.length)]};
+                    background: ${['#ff6ec4', '#7873f5', '#ffffff', '#ffd700', '#ffa500'][Math.floor(Math.random() * 5)]};
                     --tx: ${tx}px;
                     --ty: ${ty}px;
                     animation: sparkleBurst ${0.8 + Math.random() * 0.7}s ease-out forwards;
@@ -324,71 +313,12 @@
                 `;
 
                 document.body.appendChild(sparkle);
-
-                setTimeout(() => {
-                    if (sparkle.parentNode) sparkle.parentNode.removeChild(sparkle);
-                }, 1500);
+                setTimeout(() => sparkle.remove(), 1500);
             }
         }
 
-        // Create sparkles on load (no-op on touch devices)
         setTimeout(createSparkles, 300);
-
-        // Occasional sparkles
-        setInterval(() => {
-            if (Math.random() > 0.7) createSparkles();
-        }, 3000);
-
-        // Try autoplay on load only for non-touch devices; show overlay if blocked
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                if (!isTouchDevice || !saveData) {
-                    tryAutoplay().then(result => {
-                        if (!result.success) {
-                            if (playOverlay) {
-                                playOverlay.style.display = 'flex';
-                                playOverlay.setAttribute('aria-hidden', 'false');
-                            }
-                        } else {
-                            if (playOverlay) {
-                                playOverlay.style.display = 'none';
-                                playOverlay.setAttribute('aria-hidden', 'true');
-                            }
-                        }
-                    });
-                } else {
-                    if (playOverlay) {
-                        playOverlay.style.display = 'flex';
-                        playOverlay.setAttribute('aria-hidden', 'false');
-                    }
-                }
-            }, 150);
-        });
-
-        // Play when user clicks overlay or anywhere (first interaction)
-        function userStart(event) {
-            // explicit user gesture — start audio
-            if (audio) {
-                try {
-                    audio.play().catch(()=>{ /* ignore play errors */ });
-                } catch (e) {}
-            }
-
-            // Video remains muted - no unmuting on user interaction
-            if (video && video.style.display === 'none') video.style.display = '';
-            if (playOverlay) {
-                playOverlay.style.display = 'none';
-                playOverlay.setAttribute('aria-hidden', 'true');
-            }
-
-            // remove these listeners after first interaction
-            document.removeEventListener('click', userStart);
-            document.removeEventListener('touchstart', userStart);
-        }
-
-        if (playButton) playButton.addEventListener('click', userStart);
-        document.addEventListener('click', userStart, { once: true });
-        document.addEventListener('touchstart', userStart, { once: true });
+        setInterval(() => Math.random() > 0.7 && createSparkles(), 3000);
     </script>
 </body>
 </html>
